@@ -1,0 +1,86 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>VoicePilot - Voice Command Assistant</title>
+<meta name="description" content="Hands-free assistant with offline-capable speech recognition: timers, notes, math, time, jokes, and 24 commands.">
+<link rel="manifest" href="manifest.json">
+<meta name="theme-color" content="#4338ca">
+<link rel="icon" href="icon-192.png">
+<link rel="stylesheet" href="design.css">
+<style>
+.mic-wrap{display:flex;flex-direction:column;align-items:center;padding:34px 0 26px}
+.mic{width:96px;height:96px;border-radius:50%;border:none;cursor:pointer;display:grid;place-items:center;
+  background:linear-gradient(135deg,var(--accent),var(--accent-2));color:#fff;box-shadow:0 8px 30px -6px color-mix(in srgb,var(--accent) 55%,transparent);
+  transition:transform .15s}
+.mic:hover{transform:scale(1.05)}
+.mic.listening{animation:ring 1.4s infinite}
+@keyframes ring{0%{box-shadow:0 0 0 0 color-mix(in srgb,var(--accent) 45%,transparent)}100%{box-shadow:0 0 0 26px transparent}}
+.mic svg{width:38px;height:38px}
+.mic-state{margin-top:16px;font-size:13.5px;font-weight:700;color:var(--muted);letter-spacing:.02em}
+.transcript{min-height:64px;text-align:center;font-size:clamp(19px,3vw,26px);font-weight:700;letter-spacing:-.01em;padding:0 16px 8px}
+.transcript .interim{opacity:.5;font-weight:500}
+.log{display:flex;flex-direction:column;gap:10px;max-height:380px;overflow-y:auto}
+.msg{max-width:88%;padding:10px 14px;border-radius:16px;font-size:14px;line-height:1.5;animation:pop .18s ease}
+@keyframes pop{from{transform:translateY(6px);opacity:0}}
+.msg.user{align-self:flex-end;background:linear-gradient(135deg,var(--accent),var(--accent-2));color:#fff;border-bottom-right-radius:4px}
+.msg.bot{align-self:flex-start;background:var(--surface2);border-bottom-left-radius:4px}
+.msg.bot .act{display:block;font-size:11px;font-weight:800;letter-spacing:.04em;color:var(--accent);margin-top:5px;text-transform:uppercase}
+.cmd-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(230px,1fr));gap:10px}
+.cmd{padding:12px 14px;border-radius:12px;border:1px solid var(--border);background:var(--surface);cursor:pointer;text-align:left;transition:all .15s}
+.cmd:hover{border-color:var(--accent)}
+.cmd b{display:block;font-size:13.5px;margin-bottom:2px}
+.cmd span{font-size:12px;color:var(--muted)}
+.sect{font-size:13px;font-weight:800;letter-spacing:.05em;text-transform:uppercase;color:var(--muted);margin:0 0 14px}
+.limit-card{border-left:4px solid var(--accent);background:color-mix(in srgb,var(--accent) 6%,var(--surface));font-size:13.5px;color:var(--muted);margin-top:22px}
+.limit-card b{color:var(--ink)}
+.type-row{display:flex;gap:8px;margin-top:12px}
+.timers{display:flex;flex-wrap:wrap;gap:8px;margin-top:10px}
+.timer{padding:8px 14px;border-radius:99px;background:var(--surface2);font-weight:800;font-size:13.5px;font-variant-numeric:tabular-nums;display:inline-flex;gap:8px;align-items:center}
+.timer i{cursor:pointer;font-style:normal;opacity:.6}
+.timer i:hover{opacity:1;color:#dc2626}
+</style>
+</head>
+<body>
+<nav class="topnav">
+  <div class="brand"><svg width="22" height="22" viewBox="0 0 24 24" fill="none"><rect x="2" y="2" width="20" height="20" rx="6" fill="url(#g)"/><rect x="10" y="6" width="4" height="8" rx="2" fill="#fff"/><path d="M8 12a4 4 0 008 0M12 16v2.5" stroke="#fff" stroke-width="1.8" stroke-linecap="round"/><defs><linearGradient id="g" x1="0" y1="0" x2="24" y2="24"><stop stop-color="#4338ca"/><stop offset="1" stop-color="#818cf8"/></linearGradient></defs></svg>&nbsp;VoicePilot</div>
+  <span class="sp"></span>
+  <button id="btn-install" class="icon-btn" hidden title="Install app">⤓</button>
+  <button id="btn-theme" class="icon-btn" title="Toggle theme">☾</button>
+</nav>
+<main class="page">
+  <header class="page-head">
+    <h1>Say it. <em>Done.</em></h1>
+    <p>A hands-free assistant for timers, notes, math, time, and more - speech recognition runs in your browser, nothing is uploaded anywhere.</p>
+  </header>
+  <section class="card"><div class="card-body">
+    <div class="mic-wrap">
+      <button class="mic" id="mic" title="Tap to talk">
+        <svg viewBox="0 0 24 24" fill="none"><rect x="9" y="3" width="6" height="11" rx="3" fill="currentColor"/><path d="M6 11a6 6 0 0012 0M12 17v4M8.5 21h7" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg>
+      </button>
+      <div class="mic-state" id="micState">Tap the mic and speak</div>
+    </div>
+    <div class="transcript" id="transcript">Try: "set a timer for 5 minutes"</div>
+    <div class="type-row">
+      <input class="input" id="typed" placeholder="...or type a command and press Enter" autocomplete="off">
+    </div>
+    <div class="timers" id="timers"></div>
+  </div></section>
+  <section class="card" style="margin-top:22px"><div class="card-body">
+    <h2 class="sect">Conversation</h2>
+    <div class="log" id="log"></div>
+  </div></section>
+  <section class="card" style="margin-top:22px"><div class="card-body">
+    <h2 class="sect">Commands I understand</h2>
+    <div class="cmd-grid" id="cmds"></div>
+  </div></section>
+  <section class="card limit-card"><div class="card-body">
+    <b>Honest limits.</b> Speech recognition uses your browser's built-in engine (Web Speech API). In Chrome and Edge it works great but may route audio through the vendor's speech service; in Firefox it may be unavailable - typed commands work everywhere. Command understanding is pattern-based NLP, not an LLM, so phrasing matters - the command list shows what works.
+  </div></section>
+</main>
+<script src="core.js"></script>
+<script src="app.js"></script>
+<script>if('serviceWorker' in navigator)navigator.serviceWorker.register('sw.js')</script>
+</body>
+</html>
